@@ -37,7 +37,24 @@ parts:
       - ROS_VERSION: '2'
       - ROS_DISTRO: jazzy
     source: ./
-
+    prime:
+      - -usr/include/**
+      - -opt/ros/*/include/**
+      - -usr/share/doc/**
+      - -usr/share/man/**
+      - -usr/share/lintian/**
+      - -usr/share/cmake-*/**
+      - -usr/lib/**/*.a
+      - -usr/lib/**/*.la
+      - -usr/lib/**/pkgconfig/**
+      - -opt/ros/*/lib/**/*.a
+      - -opt/ros/*/lib/**/pkgconfig/**
+      - -usr/bin/cmake
+      - -usr/bin/cpack
+      - -usr/bin/ctest
+      - -usr/bin/cppcheck
+      - -usr/bin/pytest
+    
   datalayer:
     plugin: nil
     stage-packages:
