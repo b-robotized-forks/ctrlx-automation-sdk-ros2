@@ -30,7 +30,8 @@ parts:
       software-properties-common,
       ros-jazzy-ros-base,
       python3-argcomplete,
-      ca-certificates
+      ca-certificates,
+      ros-jazzy-rmw-zenoh-cpp
     ]
     build-environment:
       - ROS_VERSION: '2'
