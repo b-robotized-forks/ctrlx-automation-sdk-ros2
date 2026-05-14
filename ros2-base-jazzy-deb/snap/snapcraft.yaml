@@ -1,5 +1,6 @@
 name: ros2-base-jazzy
 version: 3.1.0
+icon: icon.png
 summary: ROS 2 Jazzy base snap for ctrlX CORE
 description: |
   Provides ROS 2 Jazzy for ROS 2 applications running on a for ctrlX CORE.
