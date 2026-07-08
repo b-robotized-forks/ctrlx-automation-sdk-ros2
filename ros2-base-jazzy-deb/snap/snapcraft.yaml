@@ -32,7 +32,12 @@ parts:
       ros-jazzy-ros-base,
       python3-argcomplete,
       ca-certificates,
-      ros-jazzy-rmw-zenoh-cpp
+      ros-jazzy-rmw-zenoh-cpp,
+      ros-jazzy-rsl,
+      ros-jazzy-diagnostic-updater,
+      ros-jazzy-control-toolbox,
+      ros-jazzy-hpp-fcl,
+      ros-jazzy-pal-statistics
     ]
     build-environment:
       - ROS_VERSION: '2'
