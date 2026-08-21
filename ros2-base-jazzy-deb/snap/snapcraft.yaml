@@ -60,6 +60,32 @@ parts:
       - -usr/bin/ctest
       - -usr/bin/cppcheck
       - -usr/bin/pytest
+
+  # in the ../ dir of this one
+  # mkdir src/ && cd src/
+  # git clone https://github.com/ros-controls/foreman.git
+  # cd ../ && colcon build --packages-up-to foreman_msgs --merge-install --install-base snap/b_robotized_overlay_install
+  b-robotized-overlay-packages:
+    plugin: dump
+    source: ./b_robotized_overlay_install
+    organize:
+      '*': opt/ros/jazzy/
+    stage-packages: 
+      - libpython3.12
+    stage:
+      # exclude files we generated when building overlay
+      # so it does not collide with apt-based ros-base part above
+      - -opt/ros/jazzy/setup.*
+      - -opt/ros/jazzy/local_setup.*
+      - -opt/ros/jazzy/_local_setup_util*
+      - -opt/ros/jazzy/COLCON_IGNORE
+    prime:
+      # remove compile time artefacts to reduce size
+      - -opt/ros/*/include/**
+      - -opt/ros/*/lib/**/*.a
+      - -opt/ros/*/lib/**/pkgconfig/**
+    override-build: |
+      craftctl default
     
   datalayer:
     plugin: nil
