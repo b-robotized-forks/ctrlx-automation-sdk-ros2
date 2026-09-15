@@ -25,7 +25,8 @@
 The base snap has its own build scripts next to its `snapcraft.yaml`, see
 [ros2-base-jazzy-deb/README.md](../ros2-base-jazzy-deb/README.md):
 
-* __../ros2-base-jazzy-deb/build-overlay-packages.sh__ builds the generated overlay packages the base snap dumps into `opt/ros/jazzy`
+* __../ros2-base-jazzy-deb/build-overlay-packages.sh__ builds the overlay packages listed in `overlay.repos` that the base snap dumps into `opt/ros/jazzy`
 * __../ros2-base-jazzy-deb/build-snap-amd64.sh__ packs the base snap for amd64
+* __../ros2-base-jazzy-deb/build-snap-arm64.sh__ packs the base snap for arm64 (native arm64 host required)
 
 SPDX-License-Identifier: MIT

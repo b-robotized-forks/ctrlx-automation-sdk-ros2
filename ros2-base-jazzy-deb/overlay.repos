@@ -1,0 +1,14 @@
+# Sources of the ROS 2 overlay packages that are dumped into the base snap by
+# the 'b-robotized-overlay-packages' part of snap/snapcraft.yaml.
+#
+# Imported with vcstool by ./build-overlay-packages.sh. 'version' takes a branch,
+# a tag or a full commit SHA - pin a SHA to make a release reproducible.
+repositories:
+  foreman:
+    type: git
+    url: https://github.com/ros-controls/foreman.git
+    version: master
+  franka_ros2:
+    type: git
+    url: https://github.com/b-robotized-forks/franka_ros2.git
+    version: b-controlled-box/jazzy

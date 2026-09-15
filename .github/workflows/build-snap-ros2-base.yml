@@ -1,8 +1,8 @@
-# Builds the ROS 2 Jazzy base snap (ros2-base-jazzy-deb) for amd64 and publishes
-# it as a GitHub Release asset for tags matching 'v*'.
+# Builds the ROS 2 Jazzy base snap (ros2-base-jazzy-deb) for amd64 and arm64 and
+# publishes the .snap files as GitHub Release assets for tags matching 'v*'.
 #
-# arm64 is intentionally not built here: it needs a native arm64 host and is not
-# part of the released set yet, see ros2-base-jazzy-deb/README.md.
+# Both architectures are built on native runners - snapcraft packs in host mode,
+# so there is no cross-compilation.
 #
 # All build logic lives in the project scripts under scripts/ and
 # ros2-base-jazzy-deb/ - this workflow only provisions the runner and calls them.
@@ -19,15 +19,10 @@ on:
       - 'scripts/**'
       - '.github/workflows/build-snap-ros2-base.yml'
   workflow_dispatch:
-    inputs:
-      overlay_ref:
-        description: 'Git ref of the overlay repository (ros-controls/foreman)'
-        required: false
-        default: 'master'
 
 env:
-  # Pin the overlay so a release is reproducible. Bump deliberately.
-  OVERLAY_REF: ${{ inputs.overlay_ref || 'master' }}
+  # Overlay sources and their pinned versions live in
+  # ros2-base-jazzy-deb/overlay.repos, not here.
   # ctrlX AUTOMATION SDK release providing the ctrlx-datalayer / ctrlx-scheduler debs.
   CTRLX_SDK_VERSION: '4.6.0'
 
@@ -40,13 +35,21 @@ permissions:
 
 jobs:
   build:
-    name: Build amd64 snap
-    runs-on: ubuntu-24.04
+    name: Build ${{ matrix.arch }} snap
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 120
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Free up disk space
         run: |
@@ -65,8 +68,8 @@ jobs:
           rosdep update
 
       # Also writes SNAPCRAFT_BUILD_ENVIRONMENT=host to /etc/environment, which
-      # sudo picks up via pam_env. build-snap-amd64.sh relies on that for its
-      # 'snapcraft clean' call, so this step has to run before the build.
+      # sudo picks up via pam_env. The build-snap-*.sh scripts rely on that for
+      # their 'snapcraft clean' call, so this step has to run before the build.
       - name: Install snapcraft
         run: ./scripts/install-snapcraft.sh
 
@@ -91,7 +94,7 @@ jobs:
 
       - name: Build snap
         working-directory: ros2-base-jazzy-deb
-        run: ./build-snap-amd64.sh
+        run: ./build-snap-${{ matrix.arch }}.sh
 
       - name: Locate snap
         id: snap
@@ -102,14 +105,16 @@ jobs:
           echo "path=ros2-base-jazzy-deb/${snap_file#./}" >> "$GITHUB_OUTPUT"
           ls -lh "${snap_file}"
 
-      # Short retention: these exist for debugging branch/PR builds and to hand
-      # the snap over to the release job. Releases are the permanent store.
+      # Pull request builds are throwaway, keep them briefly. Builds of the
+      # branch itself are kept for the maximum GitHub allows (90 days), since
+      # Actions storage is free on a public repository. Artifacts still expire
+      # purely by age - only a tagged Release is a permanent store.
       - name: Upload snap artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
-          name: snap-amd64
+          name: snap-${{ matrix.arch }}
           path: ${{ steps.snap.outputs.path }}
-          retention-days: 7
+          retention-days: ${{ github.event_name == 'pull_request' && 14 || 90 }}
           if-no-files-found: error
 
   release:
@@ -121,11 +126,12 @@ jobs:
       contents: write
 
     steps:
-      - name: Download snap
-        uses: actions/download-artifact@v4
+      - name: Download snaps
+        uses: actions/download-artifact@v8
         with:
-          name: snap-amd64
+          pattern: snap-*
           path: dist
+          merge-multiple: true
 
       - name: List assets
         run: ls -lh dist/
