@@ -61,10 +61,15 @@ parts:
       - -usr/bin/cppcheck
       - -usr/bin/pytest
 
-  # in the ../ dir of this one
-  # mkdir src/ && cd src/
-  # git clone https://github.com/ros-controls/foreman.git
-  # cd ../ && colcon build --packages-up-to foreman_msgs --merge-install --install-base snap/b_robotized_overlay_install
+  # 'b_robotized_overlay_install' is generated, it is not part of this
+  # repository. Generate it before packing by running, in the directory that
+  # holds this 'snap/' dir:
+  #
+  #     ./build-overlay-packages.sh
+  #
+  # Relative source paths are resolved against the directory snapcraft is
+  # started from, so this points at ./b_robotized_overlay_install next to
+  # build-snap-amd64.sh - not at snap/b_robotized_overlay_install.
   b-robotized-overlay-packages:
     plugin: dump
     source: ./b_robotized_overlay_install
