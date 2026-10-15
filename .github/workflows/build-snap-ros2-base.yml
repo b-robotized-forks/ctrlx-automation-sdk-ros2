@@ -1,0 +1,163 @@
+# Builds the ROS 2 Jazzy base snap (ros2-base-jazzy-deb) for amd64 and arm64 and
+# publishes the .snap files as GitHub Release assets for tags matching 'v*'.
+#
+# Both architectures are built on native runners - snapcraft packs in host mode,
+# so there is no cross-compilation.
+#
+# All build logic lives in the project scripts under scripts/ and
+# ros2-base-jazzy-deb/ - this workflow only provisions the runner and calls them.
+
+name: Build ROS 2 base snap
+
+on:
+  push:
+    branches: [ b-controlled-box/jazzy ]
+    tags: [ 'v*' ]
+  pull_request:
+    paths:
+      - 'ros2-base-jazzy-deb/**'
+      - 'scripts/**'
+      - '.github/workflows/build-snap-ros2-base.yml'
+  workflow_dispatch:
+
+env:
+  # Overlay sources and their pinned versions live in
+  # ros2-base-jazzy-deb/overlay.repos, not here.
+  # ctrlX AUTOMATION SDK release providing the ctrlx-datalayer / ctrlx-scheduler debs.
+  CTRLX_SDK_VERSION: '4.6.0'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build ${{ matrix.arch }} snap
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Free up disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+                      /usr/local/share/boost /usr/local/share/powershell || true
+          df -h /
+
+      # Installs ROS 2 Jazzy + ros-dev-tools. Needed to build the overlay
+      # packages with colcon; snapcraft itself builds in host mode.
+      - name: Set up ROS 2 Jazzy
+        run: ./scripts/setup-system-jazzy-noble.sh
+
+      - name: Initialise rosdep
+        run: |
+          sudo rosdep init || true
+          rosdep update
+
+      # Also writes SNAPCRAFT_BUILD_ENVIRONMENT=host to /etc/environment, which
+      # sudo picks up via pam_env. The build-snap-*.sh scripts rely on that for
+      # their 'snapcraft clean' call, so this step has to run before the build.
+      - name: Install snapcraft
+        run: ./scripts/install-snapcraft.sh
+
+      # Registers the ctrlx-datalayer / ctrlx-scheduler debs as a local apt
+      # source. Required by the 'datalayer' part of snap/snapcraft.yaml, which
+      # resolves stage-packages against the host's apt sources in host mode.
+      - name: Set up ctrlX Data Layer debs
+        run: ./scripts/setup-ctrlx-datalayer-deb.sh "${CTRLX_SDK_VERSION}"
+
+      # The setup script does not run under 'set -e', so verify the local apt
+      # source really provides the package the 'datalayer' part stages.
+      - name: Verify ctrlx-datalayer is available
+        run: |
+          apt-cache policy ctrlx-datalayer
+          test -n "$(apt-cache policy ctrlx-datalayer | awk '/Candidate:/ && $2 != "(none)"')"
+
+      # Not covered by scripts/: the 'b-robotized-overlay-packages' part is
+      # sourced from a generated directory that is not committed.
+      - name: Build overlay packages
+        working-directory: ros2-base-jazzy-deb
+        run: ./build-overlay-packages.sh
+
+      - name: Build snap
+        working-directory: ros2-base-jazzy-deb
+        run: ./build-snap-${{ matrix.arch }}.sh
+
+      - name: Locate snap
+        id: snap
+        working-directory: ros2-base-jazzy-deb
+        run: |
+          snap_file=$(ls -1 ./*.snap | head -n1)
+          test -s "${snap_file}"
+          echo "path=ros2-base-jazzy-deb/${snap_file#./}" >> "$GITHUB_OUTPUT"
+          ls -lh "${snap_file}"
+
+      # Pull request builds are throwaway, keep them briefly. Builds of the
+      # branch itself are kept for the maximum GitHub allows (90 days), since
+      # Actions storage is free on a public repository. Artifacts still expire
+      # purely by age - only a tagged Release is a permanent store.
+      - name: Upload snap artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: snap-${{ matrix.arch }}
+          path: ${{ steps.snap.outputs.path }}
+          retention-days: ${{ github.event_name == 'pull_request' && 14 || 90 }}
+          if-no-files-found: error
+
+  release:
+    name: Publish GitHub Release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download snaps
+        uses: actions/download-artifact@v8
+        with:
+          pattern: snap-*
+          path: dist
+          merge-multiple: true
+
+      - name: List assets
+        run: ls -lh dist/
+
+      # snap/snapcraft.yaml stays the source of truth for the snap version, so
+      # the tag and the asset version may legitimately differ. Warn, never fail.
+      - name: Check tag against snap version
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          for f in dist/*.snap; do
+            ver=$(basename "$f" | sed -E 's/^.*_([^_]+)_[^_]+\.snap$/\1/')
+            if [ "$ver" != "$tag" ]; then
+              echo "::warning::Tag ${GITHUB_REF_NAME} does not match snap version ${ver} ($(basename "$f"))"
+            fi
+          done
+
+      - name: Create or update release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ! gh release view "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+            gh release create "${GITHUB_REF_NAME}" \
+              --repo "${GITHUB_REPOSITORY}" \
+              --title "${GITHUB_REF_NAME}" \
+              --generate-notes \
+              --verify-tag
+          fi
+          gh release upload "${GITHUB_REF_NAME}" dist/*.snap \
+            --repo "${GITHUB_REPOSITORY}" --clobber
