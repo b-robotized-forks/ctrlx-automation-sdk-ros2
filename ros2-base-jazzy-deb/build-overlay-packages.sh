@@ -23,7 +23,7 @@ SNAP_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 ROOT_DIR=$(git rev-parse --show-toplevel)
 
 OVERLAY_REPOS_FILE=${OVERLAY_REPOS_FILE:-${SNAP_DIR}/overlay.repos}
-OVERLAY_PACKAGES=${OVERLAY_PACKAGES:-foreman_msgs franka_msgs}
+OVERLAY_PACKAGES=${OVERLAY_PACKAGES:-foreman_msgs franka_msgs control_msgs}
 
 WS_DIR="${ROOT_DIR}/.overlay-ws"
 INSTALL_DIR="${SNAP_DIR}/b_robotized_overlay_install"

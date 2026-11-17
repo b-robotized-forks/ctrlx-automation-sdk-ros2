@@ -42,6 +42,14 @@ parts:
       - ROS_VERSION: '2'
       - ROS_DISTRO: jazzy
     source: ./
+    stage:
+      # control_msgs comes from the overlay (b-robotized-overlay-packages);
+      # the apt version (dependency of control-toolbox) has no SetPayload.
+      - -opt/ros/jazzy/lib/libcontrol_msgs__*
+      - -opt/ros/jazzy/lib/python3.12/site-packages/control_msgs/**
+      - -opt/ros/jazzy/include/control_msgs/**
+      - -opt/ros/jazzy/share/control_msgs/**
+      - -opt/ros/jazzy/share/ament_index/resource_index/*/control_msgs
     prime:
       - -usr/include/**
       - -opt/ros/*/include/**

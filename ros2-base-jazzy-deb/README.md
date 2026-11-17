@@ -80,6 +80,7 @@ The sources are listed in [`overlay.repos`](overlay.repos) and imported with
 | ---------- | ------ | ---------------------------- |
 | [ros-controls/foreman](https://github.com/ros-controls/foreman) | `master` | `foreman_msgs` |
 | [b-robotized-forks/franka_ros2](https://github.com/b-robotized-forks/franka_ros2) | `b-controlled-box/jazzy` | `franka_msgs` |
+| [b-robotized-forks/control_msgs](https://github.com/b-robotized-forks/control_msgs) | `3907107` (`b-controlled-box/jazzy`, with `SetPayload` from `9c7e541`) | `control_msgs` (replaces the apt package) |
 
 Only the packages named in `OVERLAY_PACKAGES` and their workspace dependencies
 are built. The imported repositories contain many more packages - hardware

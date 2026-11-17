@@ -12,3 +12,9 @@ repositories:
     type: git
     url: https://github.com/b-robotized-forks/franka_ros2.git
     version: b-controlled-box/jazzy
+  # Same control_msgs as the b»controlled box RT builds (ctrlx_controller_manager-branches-exact.repos).
+  # 9c7e541 adds SetPayload.srv, 3907107 adds GetPayload.srv; the apt package of jazzy has neither.
+  control_msgs:
+    type: git
+    url: https://github.com/b-robotized-forks/control_msgs.git
+    version: 390710727176e083864e317468a3bf12a2a03a2c
